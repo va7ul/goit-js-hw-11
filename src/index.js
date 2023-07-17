@@ -1,56 +1,80 @@
-import { Notify } from 'notiflix';
-import { galleryEl } from './js/markup.js';
-import { fetchImages, totalPage, totalHits } from './js/fetch-api';
-import { createMarkup, galleryEl } from './js/markup';
-let query = '';
+import './css/styles.css';
+import { fetchImages } from './fetchImages'
+import Notiflix from 'notiflix';
+import SimpleLightbox from "simplelightbox";
+import "simplelightbox/dist/simple-lightbox.min.css";
+
+let search = '';
 let page = 1;
-const per_page = 40;
-let totalPage = 0;
-let totalHits = 0;
+let lightbox = '';
 
-const searchFormEl = document.querySelector('.search-form');
+const form = document.querySelector(".search-form");
+const gallery = document.querySelector(".gallery");
+const guard = document.querySelector(".js-guard");
 
-searchFormEl.addEventListener('submit', searchHandler);
-
-function searchHandler(event) {
-  event.preventDefault();
-  page = 1;
-  galleryEl.innerHTML = '';
-
-  query = searchFormEl.firstElementChild.value.trim();
-
-  if (query === '') {
-    Notify.warning('Please, input your query!');
-    return;
-  }
-
-  fetchImages(query, page, per_page);
-  searchFormEl.reset();
+const options = {
+    root: null,
+    rootMargin: '300px',
+    threshold: 1.0,
 }
 
-function scrollHandler() {
-  if (page === totalPage) {
-    window.removeEventListener('scroll', scrollHandler);
-    return Notify.info(
-      "We're sorry, but you've reached the end of search results."
-    );
-  }
+const observe = new IntersectionObserver(onAddImages, options)
 
-  if (totalHits > per_page) {
-    if (infinityScroll()) {
-      page += 1;
+form.addEventListener("submit", onSubmit);
 
-      fetchImages(query, page, per_page);
+async function onSubmit(evt) {
+    evt.preventDefault();
+    clearMarkup();
+
+    search = evt.currentTarget.searchQuery.value.trim();
+    if (search) {
+        await fetchImages(search).then(data => { createImages(data.hits); observe.observe(guard); Notiflix.Notify.success(`Hooray! We found ${data.totalHits} images.`) })
+        .catch(() => Notiflix.Notify.failure('Sorry, there are no images matching your search query. Please try again.'))
     }
-  }
 }
 
-function infinityScroll(page) {
-  const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-
-  if (scrollTop + clientHeight >= scrollHeight - 5) {
-    return true;
-  }
+function clearMarkup() {
+    observe.unobserve(guard);
+    gallery.innerHTML = '';
 }
 
-export { scrollHandler };
+function createImages(images) {
+    const markup = images.map(({ webformatURL, largeImageURL, tags, likes, views, comments, downloads }) => 
+        `<div class="photo-card">
+            <a class="gallery__item" href="${largeImageURL}">
+                <img src="${webformatURL}" title="${tags}" loading="lazy" width="400px" height="250px"/>
+            </a>
+            <div class="info">
+                <p class="info-item">
+                <b>Likes ${likes}</b>
+                </p>
+                <p class="info-item">
+                <b>Views ${views}</b>
+                </p>
+                <p class="info-item">
+                <b>Comments ${comments}</b>
+                </p>
+                <p class="info-item">
+                <b>Downloads ${downloads}</b>
+                </p>
+            </div>
+        </div>`).join('');
+    gallery.insertAdjacentHTML('beforeend', markup)
+
+    lightbox = new SimpleLightbox('.photo-card a', { captionDelay: 250, overlayOpacity: 0.5 });
+}
+
+function onAddImages(entries, observe) {
+        entries.forEach((entry) => {
+        if(entry.isIntersecting){
+            page+=1
+            fetchImages(search, page).then(data => {
+                createImages(data.hits);
+                lightbox.refresh();
+                if(page === 13){
+                    observe.unobserve(guard)
+                }
+            })
+        }
+    })
+}
