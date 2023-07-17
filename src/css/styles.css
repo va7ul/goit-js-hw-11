@@ -7,7 +7,7 @@ body {
     Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #fafafa;
+  background: radial-gradient(circle, rgba(238, 174, 202, 1) 0%, rgba(148, 187, 233, 1) 100%);
   color: #212121;
   line-height: 1.5;
 }
@@ -19,10 +19,7 @@ body {
 .container {
   width: 100%;
   height: 50px;
-  background-color: chartreuse;
   display: flex;
-  /* margin-left: auto; */
-  /* margin-right: auto; */
 }
 
 .gallery {
